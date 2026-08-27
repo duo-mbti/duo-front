@@ -13,7 +13,7 @@ import { getResult } from "./data/mbtiResults";
  * 유형별 사진: public/results/{TYPE}.png (예: public/results/ENTP.png) 에
  * 이미지를 넣으면 자동으로 표시됩니다. 파일이 없으면 이모지 심볼로 대체됩니다.
  */
-export default function ResultPage({ type = "ENTP", onShare }) {
+export default function ResultPage({ type = "ENTP", onShare, onRestart }) {
   const result = getResult(type.toUpperCase());
   const [imgError, setImgError] = useState(false);
 
@@ -116,6 +116,14 @@ export default function ResultPage({ type = "ENTP", onShare }) {
         <span>결과 공유하기</span>
         <span aria-hidden="true">🔗</span>
       </button>
+
+      {/* 다시하기 버튼 */}
+      {onRestart && (
+        <button style={styles.retry} onClick={onRestart}>
+          <span>다시하기</span>
+          <span aria-hidden="true">↺</span>
+        </button>
+      )}
     </div>
   );
 }
@@ -291,5 +299,21 @@ const styles = {
     padding: "14px 28px",
     background: "linear-gradient(90deg, #e8c86a, #c9a8e8)",
     boxShadow: "0 10px 30px rgba(232,200,106,0.25)",
+  },
+  retry: {
+    marginTop: 16,
+    display: "inline-flex",
+    alignItems: "center",
+    gap: 8,
+    border: "1px solid rgba(232,200,106,0.4)",
+    borderRadius: 999,
+    cursor: "pointer",
+    fontFamily: "inherit",
+    fontSize: 14,
+    fontWeight: 600,
+    letterSpacing: "0.03em",
+    color: GOLD,
+    padding: "12px 24px",
+    background: "transparent",
   },
 };

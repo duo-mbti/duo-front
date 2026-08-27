@@ -13,10 +13,15 @@ function App() {
     setScreen("result");
   };
 
+  const handleRestart = () => {
+    setType(null);
+    setScreen("start");
+  };
+
   return screen === "start" ? (
     <StartPage heroSrc="/hero.png" onStart={handleStart} />
   ) : (
-    <ResultPage type={type} />
+    <ResultPage type={type} onRestart={handleRestart} />
   );
 }
 

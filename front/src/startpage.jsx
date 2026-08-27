@@ -12,9 +12,16 @@ import { useState } from "react";
  */
 export default function StartPage({ onStart, heroSrc }) {
   const [name, setName] = useState("");
+  const [error, setError] = useState(false);
 
   const handleStart = () => {
-    if (onStart) onStart(name.trim());
+    const trimmed = name.trim();
+    if (!trimmed) {
+      setError(true);
+      return;
+    }
+    setError(false);
+    if (onStart) onStart(trimmed);
   };
 
   return (
@@ -44,12 +51,16 @@ export default function StartPage({ onStart, heroSrc }) {
         <input
           type="text"
           value={name}
-          onChange={(e) => setName(e.target.value)}
+          onChange={(e) => {
+            setName(e.target.value);
+            if (error) setError(false);
+          }}
           placeholder="당신의 이름을 입력하세요"
-          style={styles.input}
+          style={{ ...styles.input, ...(error ? styles.inputError : null) }}
           maxLength={20}
           onKeyDown={(e) => e.key === "Enter" && handleStart()}
         />
+        {error && <p style={styles.errorText}>이름을 입력해주세요</p>}
         <div style={styles.divider} aria-hidden="true">
           <span style={styles.dividerLine} />
           <span style={styles.dividerStar}>✳</span>
@@ -211,6 +222,14 @@ const styles = {
     color: "#6a6478",
     fontFamily: "inherit",
     letterSpacing: "0.02em",
+  },
+  inputError: {
+    color: "#c0455a",
+  },
+  errorText: {
+    marginTop: 8,
+    fontSize: 13,
+    color: "#c0455a",
   },
   divider: {
     display: "flex",
