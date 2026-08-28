@@ -3,9 +3,11 @@ import StartPage from "./startpage";
 import QuestionPage from "./QuestionPage";
 import ResultPage from "./ResultPage";
 
+const sharedType = new URLSearchParams(window.location.search).get("type");
+
 function App() {
-  const [screen, setScreen] = useState("start"); // "start" | "question" | "result"
-  const [type, setType] = useState(null);
+  const [screen, setScreen] = useState(sharedType ? "result" : "start"); // "start" | "question" | "result"
+  const [type, setType] = useState(sharedType);
 
   const handleStart = () => {
     setScreen("question");
@@ -19,6 +21,7 @@ function App() {
   const handleRestart = () => {
     setType(null);
     setScreen("start");
+    window.history.replaceState({}, "", window.location.pathname);
   };
 
   if (screen === "start") {
