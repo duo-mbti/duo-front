@@ -22,6 +22,7 @@ export default function ResultPage({ type = "ENTP", onShare, onRestart }) {
   const [worstMatch, setWorstMatch] = useState(null);
   const [error, setError] = useState(null);
   const [imgError, setImgError] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     setImgError(false);
@@ -59,13 +60,23 @@ export default function ResultPage({ type = "ENTP", onShare, onRestart }) {
   const { title: god, epithet, symbol, description: desc, long_description: longDesc, keywords } = result;
   const imgSrc = `/results/${code}.png`;
 
+  const shareUrl = `${window.location.origin}${window.location.pathname}?type=${code}`;
+
   const handleShare = () => {
     if (onShare) return onShare(result);
     const text = `나의 신화 속 정체는 ${code} · ${god}!`;
     if (navigator.share) {
-      navigator.share({ title: "신화 MBTI 결과", text }).catch(() => {});
-    } else if (navigator.clipboard) {
-      navigator.clipboard.writeText(text).catch(() => {});
+      navigator.share({ title: "신화 MBTI 결과", text, url: shareUrl }).catch(() => {});
+      return;
+    }
+    if (navigator.clipboard) {
+      navigator.clipboard
+        .writeText(`${text} ${shareUrl}`)
+        .then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        })
+        .catch(() => {});
     }
   };
 
@@ -140,7 +151,7 @@ export default function ResultPage({ type = "ENTP", onShare, onRestart }) {
 
       {/* 공유 버튼 */}
       <button style={styles.cta} onClick={handleShare}>
-        <span>결과 공유하기</span>
+        <span>{copied ? "링크가 복사됐어요!" : "결과 공유하기"}</span>
         <span aria-hidden="true">🔗</span>
       </button>
 
