@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { getResult } from "./data/mbtiResults";
+import { fetchResult } from "./api";
+import { getBestMatchCode, getWorstMatchCode } from "./data/mbtiResults";
 
 /**
  * MBTI 결과 페이지
@@ -8,28 +9,54 @@ import { getResult } from "./data/mbtiResults";
  * 사용법:
  *   <ResultPage type="ENTP" />
  *
- * 16개 MBTI 유형 데이터는 src/data/mbtiResults.js 에서 관리합니다.
+ * 유형별 콘텐츠(신 이름/설명/키워드 등)는 GET /tests/result/:mbti로 불러옵니다.
+ * 궁합(천상의 동맹 / 우주의 마찰) 계산은 src/data/mbtiResults.js 를 사용합니다.
  *
  * 유형별 사진: public/results/{TYPE}.png (예: public/results/ENTP.png) 에
  * 이미지를 넣으면 자동으로 표시됩니다. 파일이 없으면 이모지 심볼로 대체됩니다.
  */
 export default function ResultPage({ type = "ENTP", onShare, onRestart }) {
-  const result = getResult(type.toUpperCase());
+  const code = type.toUpperCase();
+  const [result, setResult] = useState(null);
+  const [bestMatch, setBestMatch] = useState(null);
+  const [worstMatch, setWorstMatch] = useState(null);
+  const [error, setError] = useState(null);
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
     setImgError(false);
-  }, [type]);
+    setError(null);
+    setResult(null);
 
-  if (!result) {
+    const bestCode = getBestMatchCode(code);
+    const worstCode = getWorstMatchCode(code);
+
+    Promise.all([fetchResult(code), fetchResult(bestCode), fetchResult(worstCode)])
+      .then(([main, best, worst]) => {
+        setResult(main);
+        setBestMatch({ code: bestCode, god: best.title });
+        setWorstMatch({ code: worstCode, god: worst.title });
+      })
+      .catch((err) => setError(err.message));
+  }, [code]);
+
+  if (error) {
     return (
       <div style={styles.page}>
-        <p style={{ color: "#e8c86a" }}>알 수 없는 유형입니다: {type}</p>
+        <p style={{ color: "#e8c86a" }}>결과를 불러오지 못했습니다: {error}</p>
       </div>
     );
   }
 
-  const { code, god, epithet, symbol, desc, keywords, longDesc, bestMatch, worstMatch } = result;
+  if (!result || !bestMatch || !worstMatch) {
+    return (
+      <div style={styles.page}>
+        <p style={{ color: "#e8c86a" }}>신탁을 해석하는 중...</p>
+      </div>
+    );
+  }
+
+  const { title: god, epithet, symbol, description: desc, long_description: longDesc, keywords } = result;
   const imgSrc = `/results/${code}.png`;
 
   const handleShare = () => {

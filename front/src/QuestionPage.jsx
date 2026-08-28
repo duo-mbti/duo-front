@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { QUESTIONS, computeMbtiCode } from "./data/questions";
+import { useEffect, useState } from "react";
+import { fetchQuestions, submitAnswers } from "./api";
 
 const ACT_LABELS = ["Ἡ πορεία ἄρχεται", "Ἡ μοῖρα ὑφαίνεται"];
 const ACT_BACKGROUNDS = [
@@ -16,24 +16,67 @@ const ACT_BACKGROUNDS = [
  * 사용법:
  *   <QuestionPage onComplete={(mbtiCode) => ...} onExit={() => ...} />
  *
- * 질문 데이터는 src/data/questions.js 에서 관리하며,
- * 4개 질문(E/I, S/N, T/F, J/P)의 선택을 순서대로 모아 4글자 코드를 완성합니다.
+ * 문항은 GET /tests/questions로 불러오고, 마지막 문항 응답 시
+ * POST /tests/submit으로 채점해 받은 4글자 코드를 onComplete로 넘깁니다.
  */
 export default function QuestionPage({ onComplete, onExit }) {
+  const [questions, setQuestions] = useState(null);
+  const [loadError, setLoadError] = useState(null);
   const [step, setStep] = useState(0);
-  const [answers, setAnswers] = useState([]);
+  const [answers, setAnswers] = useState({}); // { [questionId]: 'a' | 'b' }
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
 
-  const total = QUESTIONS.length;
-  const question = QUESTIONS[step];
+  useEffect(() => {
+    fetchQuestions()
+      .then(setQuestions)
+      .catch((err) => setLoadError(err.message));
+  }, []);
+
+  if (loadError) {
+    return (
+      <div style={styles.page}>
+        <p style={styles.errorText}>문항을 불러오지 못했습니다: {loadError}</p>
+        {onExit && (
+          <button style={styles.iconBtn} onClick={onExit}>
+            돌아가기
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (!questions) {
+    return (
+      <div style={styles.page}>
+        <p style={styles.errorText}>신탁을 준비하는 중...</p>
+      </div>
+    );
+  }
+
+  const total = questions.length;
+  const question = questions[step];
   const actIndex = Math.floor(step / 5); // 0: E/I, 1: S/N, 2: T/F, 3: J/P
 
-  const handleChoice = (trait) => {
-    const next = [...answers, trait];
+  const handleChoice = async (choice) => {
+    if (submitting) return;
+    const nextAnswers = { ...answers, [question.id]: choice };
+
     if (step + 1 < total) {
-      setAnswers(next);
+      setAnswers(nextAnswers);
       setStep(step + 1);
-    } else {
-      onComplete?.(computeMbtiCode(next));
+      return;
+    }
+
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      const payload = questions.map((q) => ({ questionId: q.id, choice: nextAnswers[q.id] }));
+      const { mbti } = await submitAnswers(payload);
+      onComplete?.(mbti);
+    } catch (err) {
+      setSubmitError(err.message);
+      setSubmitting(false);
     }
   };
 
@@ -42,7 +85,6 @@ export default function QuestionPage({ onComplete, onExit }) {
       onExit?.();
       return;
     }
-    setAnswers(answers.slice(0, -1));
     setStep(step - 1);
   };
 
@@ -79,20 +121,28 @@ export default function QuestionPage({ onComplete, onExit }) {
         <h1 style={styles.title}>
           {step + 1}. {question.title}
         </h1>
-        <p style={styles.description}>{question.description}</p>
+        <p style={styles.description}>{question.story_text}</p>
         <p style={styles.prompt}>당신의 행동은?</p>
 
+        {submitError && <p style={styles.errorText}>{submitError}</p>}
+
         <div style={styles.choiceList}>
-          {question.choices.map((choice) => (
-            <button
-              key={choice.trait}
-              style={styles.choiceBtn}
-              onClick={() => handleChoice(choice.trait)}
-            >
-              {choice.text}
-            </button>
-          ))}
+          <button
+            style={styles.choiceBtn}
+            onClick={() => handleChoice("a")}
+            disabled={submitting}
+          >
+            {question.option_a_text}
+          </button>
+          <button
+            style={styles.choiceBtn}
+            onClick={() => handleChoice("b")}
+            disabled={submitting}
+          >
+            {question.option_b_text}
+          </button>
         </div>
+        {submitting && <p style={styles.progressLabel}>신탁을 받는 중...</p>}
 
         <span style={styles.footerGlyph} aria-hidden="true">△</span>
       </div>
@@ -131,6 +181,12 @@ function ProgressDots({ total, current }) {
 const GOLD = "#e8c86a";
 
 const styles = {
+  errorText: {
+    marginTop: 16,
+    fontSize: 14,
+    color: GOLD,
+    textAlign: "center",
+  },
   page: {
     position: "relative",
     minHeight: "100vh",
